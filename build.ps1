@@ -1,0 +1,2 @@
+g++ -std=c++20 -Wall -Wextra -pedantic -Werror -o ./build/qubec.exe ./src/main.cpp $(Get-ChildItem -Path ./src/frontend -Filter *.cpp | ForEach-Object { $_.FullName }) $(Get-ChildItem -Path ./src/backend -Filter *.cpp | ForEach-Object { $_.FullName })
+./build/qubec.exe
