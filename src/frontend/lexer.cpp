@@ -1,7 +1,6 @@
 #include <vector>
 #include <string>
 #include <cctype>
-
 #include "token.hpp"
 
 class Lexer {
@@ -13,40 +12,40 @@ class Lexer {
   public:
     Lexer(const std::string& source) : source(source) {}
 
-    bool isEnd() {
-      return !(pos < source.length());
+    bool isEnd() const {
+      return pos >= source.length();
     }
 
-    char at() {
-      return source.at(pos);
+    char at() const {
+      return isEnd() ? '\0' : source.at(pos);
     }
 
-    std::string slice(int n) {
-      return source.substr(pos, n);
+    std::string slice(int n) const {
+      return isEnd() ? "" : source.substr(pos, n);
     }
 
-    void addTok(Token tk) {
+    void addTok(const Token& tk) {
       tokens.push_back(tk);
     }
 
     void advance(int n = 1) {
-      pos += n;
+      pos = std::min(pos + n, source.length());
     }
 
     void handleNum() {
       std::string buffer;
-      int dotCount;
+      int dotCount = 0;
       while (!isEnd() && (isdigit(at()) || at() == '.')) {
+        if (at() == '.') dotCount++;
         buffer.push_back(at());
-        if (at() == '.')
-          dotCount++;
         advance();
       }
-      if (dotCount == 0)
-        addTok(makeToken(TokenType::INTLIT, buffer));
+      if (dotCount > 1)
+        exit(1); //error here
       else if (dotCount == 1)
-      addTok(makeToken(TokenType::FLOATLIT, buffer));
-      // else error
+        addTok(makeToken(TokenType::FLOATLIT, buffer));
+      else
+        addTok(makeToken(TokenType::INTLIT, buffer));
     }
 
     void handleSymbol() {
@@ -63,108 +62,52 @@ class Lexer {
 
     std::vector<Token> tokenize() {
       while (!isEnd()) {
-        // 2 character tokens first!
-        while (at() == ' ' || at() == '\n' || at() == '\t') {
+        char current = at();
+
+        if (isspace(current)) {
           advance();
+          continue;
         }
 
-        if (slice(2) == "==") {
-          addTok(makeToken(TokenType::EQEQ));
-          advance(2);
-        } else if (slice(2) == "!=") {
-          addTok(makeToken(TokenType::BANGEQ));
-          advance(2);
-        } else if (slice(2) == ">=") {
-          addTok(makeToken(TokenType::GREATEREQ));
-          advance(2);
-        } else if (slice(2) == "<=") {
-          addTok(makeToken(TokenType::LESSEREQ));
-          advance(2);
-        }
+        // 2-character tokens!
+        if (slice(2) == "==") { addTok(makeToken(TokenType::EQEQ)); advance(2); continue; }
+        if (slice(2) == "!=") { addTok(makeToken(TokenType::BANGEQ)); advance(2); continue; }
+        if (slice(2) == ">=") { addTok(makeToken(TokenType::GREATEREQ)); advance(2); continue; }
+        if (slice(2) == "<=") { addTok(makeToken(TokenType::LESSEREQ)); advance(2); continue; }
 
-        // single character tokens!
-        switch (at()) {
-          case '+':
-            addTok(makeToken(TokenType::PLUS));
-            advance();
-            break;
-          case '-':
-            addTok(makeToken(TokenType::DASH));
-            advance();
-            break;
-          case '*':
-            addTok(makeToken(TokenType::STAR));
-            advance();
-            break;
-          case '/':
-            addTok(makeToken(TokenType::SLASH));
-            advance();
-            break;
-          case '(':
-            addTok(makeToken(TokenType::LEFTPAR));
-            advance();
-            break;
-          case ')':
-            addTok(makeToken(TokenType::RIGHTPAR));
-            advance();
-            break;
-          case '[':
-            addTok(makeToken(TokenType::LEFTBRACK));
-            advance();
-            break;
-          case ']':
-            addTok(makeToken(TokenType::RIGHTBRACK));
-            advance();
-            break;
-          case '{':
-            addTok(makeToken(TokenType::LEFTCURLY));
-            advance();
-            break;
-          case '}':
-            addTok(makeToken(TokenType::RIGHTCURLY));
-            advance();
-            break;
-          case '=':
-            addTok(makeToken(TokenType::EQ));
-            advance();
-            break;
-          case '!':
-            addTok(makeToken(TokenType::BANG));
-            advance();
-            break;
-          case '>':
-            addTok(makeToken(TokenType::GREATER));
-            advance();
-            break;
-          case '<':
-            addTok(makeToken(TokenType::LESSER));
-            advance();
-            break;
-          case '.':
-            addTok(makeToken(TokenType::DOT));
-            advance();
-            break;
-          case ',':
-            addTok(makeToken(TokenType::COMMA));
-            advance();
-            break;
-          case ':':
-            addTok(makeToken(TokenType::COLON));
-            advance();
-            break;
-          case ';':
-            addTok(makeToken(TokenType::SEMI));
-            advance();
-            break;
+        // 1-character tokens!
+        switch (current) {
+          case '+': addTok(makeToken(TokenType::PLUS)); break;
+          case '-': addTok(makeToken(TokenType::DASH)); break;
+          case '*': addTok(makeToken(TokenType::STAR)); break;
+          case '/': addTok(makeToken(TokenType::SLASH)); break;
+          case '(': addTok(makeToken(TokenType::LEFTPAR)); break;
+          case ')': addTok(makeToken(TokenType::RIGHTPAR)); break;
+          case '[': addTok(makeToken(TokenType::LEFTBRACK)); break;
+          case ']': addTok(makeToken(TokenType::RIGHTBRACK)); break;
+          case '{': addTok(makeToken(TokenType::LEFTCURLY)); break;
+          case '}': addTok(makeToken(TokenType::RIGHTCURLY)); break;
+          case '=': addTok(makeToken(TokenType::EQ)); break;
+          case '!': addTok(makeToken(TokenType::BANG)); break;
+          case '>': addTok(makeToken(TokenType::GREATER)); break;
+          case '<': addTok(makeToken(TokenType::LESSER)); break;
+          case '.': addTok(makeToken(TokenType::DOT)); break;
+          case ',': addTok(makeToken(TokenType::COMMA)); break;
+          case ':': addTok(makeToken(TokenType::COLON)); break;
+          case ';': addTok(makeToken(TokenType::SEMI)); break;
           default:
-            break;
+            if (isdigit(current)) {
+              handleNum();
+              continue;
+            } else if (isalpha(current)) {
+              handleSymbol();
+              continue;
+            } else {
+              // error
+              exit(1);
+            }
         }
-
-        if (isdigit(at())) {
-          handleNum();
-        } else if (isalpha(at())) {
-          handleSymbol();
-        }
+        advance();
       }
       addTok(makeToken(TokenType::EOF));
       return tokens;
